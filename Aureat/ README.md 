@@ -1,0 +1,156 @@
+```markdown
+# Aureat Tool
+
+**Aureat** is an Automated Threat Intelligence Aggregator designed to help cybersecurity professionals monitor and manage threats effectively. Developed by **Suleiman Yahya Garo (Garogenius)**, this tool provides functionalities for device monitoring, threat detection, and automated reporting.
+
+## Table of Contents
+
+- [Features](#features)
+- [Installation](#installation)
+  - [Windows](#windows-installation)
+  - [Linux](#linux-installation)
+- [Usage](#usage)
+- [Command Usage and Examples](#command-usage-and-examples)
+- [Contributing](#contributing)
+- [License](#license)
+- [About the Developer](#about-the-developer)
+
+## Features
+
+- Add devices to monitor with IP addresses, names, and types.
+- List and manage monitored devices.
+- Detect dangerous threats and send alerts via email.
+- Generate detailed reports and save them to specified locations.
+- Send feedback or error reports to the developer.
+- Check tool version and access help information.
+
+## Installation
+
+### Windows Installation
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/garogenius/aureat.git
+   cd aureat
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Add to PATH:**
+   - Add the directory containing `aureat.py` to your system's PATH environment variable to run it using the command `aureat`.
+
+4. **Run the tool:**
+   ```bash
+   aureat --help
+   ```
+
+### Linux Installation
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/garogenius/aureat.git
+   cd aureat
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Make the script executable:**
+   ```bash
+   chmod +x aureat.py
+   ```
+
+4. **Create a symlink to run globally:**
+   ```bash
+   sudo ln -s $(pwd)/aureat.py /usr/local/bin/aureat
+   ```
+
+5. **Run the tool:**
+   ```bash
+   aureat --help
+   ```
+
+## Usage
+
+To use the Aureat Tool, open a terminal or command prompt and type the desired command. For help, you can use:
+
+```bash
+aureat --help
+```
+
+## Command Usage and Examples
+
+1. **Add a Device**:
+   ```bash
+   aureat --add -d <IP_address> -n "name" --type "device_type"
+   ```
+
+2. **List Monitored Devices**:
+   ```bash
+   aureat --ML -l
+   ```
+
+3. **Remove a Device**:
+   ```bash
+   aureat --remove -D <IP_address>
+   ```
+
+4. **Drop All Devices from Monitoring List**:
+   ```bash
+   aureat --drop -ML
+   ```
+
+5. **Correlate Threats and Generate Report**:
+   ```bash
+   aureat --correlate --report "Report Title" --save <path>
+   ```
+
+6. **Detect Dangerous Threats**:
+   ```bash
+   aureat --dg
+   ```
+
+7. **Send Feedback or Report an Error**:
+   ```bash
+   aureat -d --report -F "<title>", "<content>"
+   ```
+
+8. **Check Tool Version**:
+   ```bash
+   aureat --version
+   ```
+
+9. **Display Help Information**:
+   ```bash
+   aureat --help
+   ```
+
+10. **Set Email for Alerts**:
+    ```bash
+    aureat --set-email <your_email_address>
+    ```
+
+11. **View Existing Reports**:
+    ```bash
+    aureat --view-reports
+    ```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a pull request or open an issue for any improvements or suggestions.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## About the Developer
+
+**Suleiman Yahya Garo (Garogenius)** is a specialist in Cybersecurity Analysis/SOC and the youngest cybersecurity analyst in the world. Born on March 23, 2002, in Nigeria, he has invented several tools, including Vulnscan, Infion Tool, FIR Tool, Tryme, and Netscan Tool, aimed at providing innovative solutions to cybersecurity challenges.
+
+---
+
