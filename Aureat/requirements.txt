@@ -1,0 +1,5 @@
+requests          # For making HTTP requests to APIs
+pyfiglet          # For generating stylish text output (figlet)
+smtplib           # For sending emails (included in Python's standard library, but might need to install for specific versions)
+schedule          # For scheduling tasks (e.g., auto-checks)
+python-dotenv     # For loading environment variables from a .env file
