@@ -196,7 +196,7 @@ def auto_checker(interval=3600, receiver_email=""):
 # Command-line Interface
 def main():
     parser = argparse.ArgumentParser(description="Aureat - Automated Threat Intelligence Aggregator by Garogenius")
-    parser.add_argument('--add', '-d', help="Add device to the monitoring list. Example: aureat --add -d <IP> -n 'name' --type 'device_type'")
+    parser.add_argument('--add', '-d', help="Add device to the monitoring list. Example: aureat --add <IP> -n 'name' --type 'device_type'")
     parser.add_argument('--name', '-n', help="Specify device name when adding to the monitoring list.")
     parser.add_argument('--type', help="Specify device type when adding to the monitoring list.")
     parser.add_argument('--remove', '-D', help="Remove device from the monitoring list by IP address.")
@@ -215,31 +215,40 @@ def main():
     display_header()
 
     if args.add and args.name and args.type:
+        print(f"Attempting to add device: {args.add}, Name: {args.name}, Type: {args.type}")
         add_device(args.add, args.name, args.type)
     elif args.remove:
+        print(f"Attempting to remove device with IP: {args.remove}")
         remove_device(args.remove)
     elif args.drop:
+        print("Dropping all devices from monitoring list.")
         drop_all_devices()
     elif args.ML:
+        print("Listing all monitored devices.")
         list_monitored_devices()
     elif args.fetch:
+        print("Fetching latest threat data.")
         threat_data = fetch_threat_data()
     elif args.correlate:
+        print("Correlating fetched threats with monitored devices.")
         threat_data = fetch_threat_data()
         correlated_threats = correlate_threats(threat_data)
         if correlated_threats:
             report_file = generate_report(correlated_threats, args.report_title)
             send_email_alert("Threat Report", f"Report generated: {report_file}", args.receiver)
     elif args.dg:
+        print("Detecting dangerous threats.")
         threat_data = fetch_threat_data()
         dangerous_threats = detect_dangerous_threats(threat_data)
         if dangerous_threats:
             send_email_alert("Dangerous Threats Detected", f"Found dangerous threats: {dangerous_threats}", args.receiver)
     elif args.feedback:
+        print("Sending feedback.")
         title, content = args.feedback.split(', ', 1)
         send_feedback(title, content)
     elif args.auto_check:
         receiver_email = args.receiver if args.receiver else config['Email'].get('ReceiverEmail', '')
+        print(f"Starting auto-check with receiver email: {receiver_email}")
         auto_checker(receiver_email=receiver_email)
     else:
         parser.print_help()
