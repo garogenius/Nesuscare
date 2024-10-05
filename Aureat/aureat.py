@@ -9,7 +9,6 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import subprocess
 import time
-import sys
 
 # Configuration
 config = configparser.ConfigParser()
@@ -67,7 +66,6 @@ def add_device(ip_address, name, device_type):
 def remove_device(ip_address):
     load_devices()  # Load the latest devices before removing
     global MONITORED_DEVICES
-    # Fix: Only remove the device that matches the given IP address
     device_found = False
     for device in MONITORED_DEVICES:
         if device['ip'] == ip_address:
@@ -96,7 +94,6 @@ def list_monitored_devices():
 
 def send_email_alert(subject, body, receiver_email):
     try:
-        # Ensure the 'Email' section is present
         if 'Email' not in config:
             print("Error: 'Email' section is missing in config.ini.")
             return
@@ -104,7 +101,6 @@ def send_email_alert(subject, body, receiver_email):
         senderEmail = config['Email'].get('SenderEmail')
         password = config['Email'].get('Password')
 
-        # Ensure both email and password are provided
         if not senderEmail or not password:
             print("Error: Missing SenderEmail or Password in config.ini.")
             return
@@ -115,17 +111,16 @@ def send_email_alert(subject, body, receiver_email):
         msg['Subject'] = subject
         msg.attach(MIMEText(body, 'plain'))
 
-        try:
-            with smtplib.SMTP('smtp.gmail.com', 587) as server:
-                server.starttls()
-                server.login(senderEmail, password)
-                server.send_message(msg)
-            print(f"Email alert sent to {receiver_email}.")
-        except Exception as e:
-            print(f"Error sending email: {e}")
+        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+            server.starttls()
+            server.login(senderEmail, password)
+            server.send_message(msg)
+        print(f"Email alert sent to {receiver_email}.")
     
     except KeyError as e:
         print(f"KeyError: Missing email configuration for {e}")
+    except smtplib.SMTPException as e:
+        print(f"SMTP Error: {e}")
     except Exception as e:
         print(f"Unexpected error: {e}")
 
@@ -134,6 +129,7 @@ def fetch_threat_data():
     for feed_name, feed_url in THREAT_FEEDS.items():
         try:
             response = requests.get(feed_url)
+            response.raise_for_status()  # Raise an error for bad responses
             if feed_name == "Abuse":
                 data = response.text.splitlines()
                 threat_data.extend([{"ip": line.split(',')[0], "description": line} for line in data])  # Adjust structure as needed
@@ -169,7 +165,6 @@ def generate_report(correlated_threats, title="Threat Report"):
     return report_file
 
 def detect_dangerous_threats(threat_data):
-    # Fix: Make sure threat_data contains dictionaries, not strings
     dangerous_threats = [threat for threat in threat_data if isinstance(threat, dict) and (
         "critical" in threat.get('severity', '').lower() or "malware" in threat.get('description', '').lower())]
     return dangerous_threats
@@ -207,52 +202,45 @@ def main():
     parser.add_argument('--report-title', help="Generate a report of correlated threats.")
     parser.add_argument('--dg', action='store_true', help="Detect dangerous threats and send alert.")
     parser.add_argument('--feedback', '-F', help="Send feedback to the developer with title and content.")
-    parser.add_argument('--receiver', help="Email to receive alert notifications.")
-    parser.add_argument('--version', action='version', version=VERSION, help="Show version information.")
-    parser.add_argument('--auto-check', action='store_true', help="Run auto-check for new threats.")
+    parser.add_argument('--receiver-email', help="Email address to receive alerts.")
+    parser.add_argument('--version', action='version', version=VERSION, help="Show the version of Aureat.")
+    parser.add_argument('--auto-check', action='store_true', help="Run the auto-checker for threats at regular intervals.")
+
     args = parser.parse_args()
 
     display_header()
 
     if args.add and args.name and args.type:
-        print(f"Attempting to add device: {args.add}, Name: {args.name}, Type: {args.type}")
         add_device(args.add, args.name, args.type)
     elif args.remove:
-        print(f"Attempting to remove device with IP: {args.remove}")
         remove_device(args.remove)
     elif args.drop:
-        print("Dropping all devices from monitoring list.")
         drop_all_devices()
     elif args.ML:
-        print("Listing all monitored devices.")
         list_monitored_devices()
     elif args.fetch:
-        print("Fetching latest threat data.")
-        threat_data = fetch_threat_data()
+        fetch_threat_data()
     elif args.correlate:
-        print("Correlating fetched threats with monitored devices.")
         threat_data = fetch_threat_data()
         correlated_threats = correlate_threats(threat_data)
-        if correlated_threats:
-            report_file = generate_report(correlated_threats, args.report_title)
-            send_email_alert("Threat Report", f"Report generated: {report_file}", args.receiver)
+        if args.report_title:
+            generate_report(correlated_threats, args.report_title)
+        else:
+            print("Correlated threats fetched but no report title provided.")
     elif args.dg:
-        print("Detecting dangerous threats.")
         threat_data = fetch_threat_data()
         dangerous_threats = detect_dangerous_threats(threat_data)
         if dangerous_threats:
-            send_email_alert("Dangerous Threats Detected", f"Found dangerous threats: {dangerous_threats}", args.receiver)
+            report_file = generate_report(dangerous_threats, title="Dangerous Threats Report")
+            if args.receiver_email:
+                send_email_alert("Dangerous Threats Detected", f"Dangerous threats report: {report_file}", args.receiver_email)
     elif args.feedback:
-        print("Sending feedback.")
-        title, content = args.feedback.split(', ', 1)
-        send_feedback(title, content)
+        feedback_title, feedback_content = args.feedback.split(",", 1)
+        send_feedback(feedback_title.strip(), feedback_content.strip())
     elif args.auto_check:
-        receiver_email = args.receiver if args.receiver else config['Email'].get('ReceiverEmail', '')
-        print(f"Starting auto-check with receiver email: {receiver_email}")
-        auto_checker(receiver_email=receiver_email)
+        auto_checker(receiver_email=args.receiver_email)
     else:
         parser.print_help()
 
 if __name__ == '__main__':
-    load_devices()
     main()
