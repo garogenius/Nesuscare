@@ -96,30 +96,36 @@ def list_monitored_devices():
 
 def send_email_alert(subject, body, receiver_email):
     try:
-        # Fix: Check if the config contains the necessary email settings
-        if 'Email' not in config or 'SenderEmail' not in config['Email'] or 'Password' not in config['Email']:
-            print("Email configuration missing in config.ini.")
+        # Check if the 'Email' section and its keys exist in the config
+        if not all(key in config['Email'] for key in ['SenderEmail', 'Password']):
+            print("Email configuration missing or incomplete in config.ini.")
             return
 
-        sender_email = config['Email']['SenderEmail']
+        senderEmail = config['Email']['SenderEmail']
         password = config['Email']['Password']
 
         msg = MIMEMultipart()
-        msg['From'] = sender_email
+        msg['From'] = senderEmail
         msg['To'] = receiver_email
         msg['Subject'] = subject
         msg.attach(MIMEText(body, 'plain'))
 
+        # Attempt to send the email
         try:
             with smtplib.SMTP('smtp.gmail.com', 587) as server:
                 server.starttls()
-                server.login(sender_email, password)
+                server.login(senderEmail, password)
                 server.send_message(msg)
             print(f"Email alert sent to {receiver_email}.")
+        except smtplib.SMTPException as smtp_err:
+            print(f"SMTP error occurred: {smtp_err}")
         except Exception as e:
-            print(f"Error sending email: {e}")
-    except KeyError as e:
-        print(f"Missing email configuration: {e}")
+            print(f"General error when sending email: {e}")
+    
+    except KeyError as config_err:
+        print(f"Configuration error: Missing key {config_err}")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
 
 def fetch_threat_data():
     threat_data = []
