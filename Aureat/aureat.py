@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import requests
-import pandas as pd
 import smtplib
 import configparser
 import os
@@ -23,39 +22,50 @@ THREAT_FEEDS = {
 
 VERSION = "Aureat Tool v2.2"
 MONITORED_DEVICES = []
-DEFAULT_SAVE_PATH = os.path.expanduser('~')
-REPORTS_PATH = os.path.join(DEFAULT_SAVE_PATH, "aureat_reports")
+WORKING_DIR = os.getcwd()  # Get the current working directory
+REPORTS_PATH = os.path.join(WORKING_DIR, "aureat_reports")
+DEVICES_FILE = os.path.join(WORKING_DIR, "monitored_devices.txt")
 
+# Create directories if they don't exist
 if not os.path.exists(REPORTS_PATH):
     os.makedirs(REPORTS_PATH)
 
 def display_header():
-    print("________________________________________________________________")
-    print("|                                                               |")
-    print("|                                                               |")
-    subprocess.run(["figlet", "             Aureat"])
-    print("|        Automated Threat Intelligence Aggregator Tool          |")
-    print("|                     Created by Garogenius                     |")
-    print("|                                                               |")
-    print("|                                                               |")
-    print("_________________________________________________________________")
+    print("___________________________________________________________")
+    print("|                                                          |")
+    subprocess.run(["figlet", "   L         Aureat"])
+    print("|   Automated Threat Intelligence Aggregator Tool          |")
+    print("|                Created by Garogenius                     |")
+    print("|                                                          |")
+    print("|__________________________________________________________|")
 
-# Load devices from the monitored_devices.txt file
-def load_devices(save_path=None):
-    save_path = save_path or DEFAULT_SAVE_PATH
-    full_path = os.path.join(save_path, "monitored_devices.txt")
-    if os.path.exists(full_path):
-        with open(full_path, "r") as f:
+def load_devices():
+    """Load devices from the file into the MONITORED_DEVICES list."""
+    global MONITORED_DEVICES
+    MONITORED_DEVICES = []
+    if os.path.exists(DEVICES_FILE):
+        with open(DEVICES_FILE, "r") as f:
             for line in f:
                 name, ip, device_type = line.strip().split(" - ")
-                MONITORED_DEVICES.append({"name": name, "ip": ip, "type": device_type})
+                MONITORED_DEVICES.append({"ip": ip, "name": name, "type": device_type})
+    else:
+        print(f"No device file found at {DEVICES_FILE}. Starting fresh...")
+
+def save_devices():
+    """Save the MONITORED_DEVICES list to the file."""
+    with open(DEVICES_FILE, "w") as f:
+        for device in MONITORED_DEVICES:
+            f.write(f"{device['name']} - {device['ip']} - {device['type']}\n")
+    print(f"Monitored devices saved to {DEVICES_FILE}.")
 
 def add_device(ip_address, name, device_type):
+    load_devices()  # Always load the latest devices before adding
     MONITORED_DEVICES.append({"ip": ip_address, "name": name, "type": device_type})
     print(f"Device {ip_address} ({name}, {device_type}) added to monitoring list.")
     save_devices()
 
 def remove_device(ip_address):
+    load_devices()  # Load the latest devices before removing
     global MONITORED_DEVICES
     MONITORED_DEVICES = [d for d in MONITORED_DEVICES if d['ip'] != ip_address]
     print(f"Device {ip_address} removed from monitoring list.")
@@ -67,17 +77,8 @@ def drop_all_devices():
     print("All devices have been removed from the monitoring list.")
     save_devices()
 
-def save_devices(save_path=None):
-    save_path = save_path or DEFAULT_SAVE_PATH
-    full_path = os.path.join(save_path, "monitored_devices.txt")
-    with open(full_path, "w") as f:
-        for device in MONITORED_DEVICES:
-            f.write(f"{device['name']} - {device['ip']} - {device['type']}\n")
-    print(f"Monitored devices saved to {full_path}.")
-
 def list_monitored_devices():
-    MONITORED_DEVICES.clear()  # Clear the list to reload fresh data from file
-    load_devices()  # Load devices from the file
+    load_devices()  # Always load the latest devices before listing
     if MONITORED_DEVICES:
         print("Devices in monitoring list:")
         for device in MONITORED_DEVICES:
