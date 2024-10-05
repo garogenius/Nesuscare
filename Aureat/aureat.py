@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 import requests
 import smtplib
@@ -165,9 +166,12 @@ def auto_checker(interval=3600, receiver_email=""):
 # Command-line Interface
 def main():
     parser = argparse.ArgumentParser(description="Aureat - Automated Threat Intelligence Aggregator by Garogenius")
-    parser.add_argument('--add', '-d', help="Add device to the monitoring list. Example: aureat --add -d <IP> -n 'name' --type 'device_type'")
-    parser.add_argument('--name', '-n', help="Specify device name when adding to the monitoring list.")
-    parser.add_argument('--type', help="Specify device type when adding to the monitoring list.")
+    
+    # Fixed the issue with argument parsing by handling optional inputs more gracefully
+    parser.add_argument('--add', '-d', help="Add device to the monitoring list. Example: aureat --add <IP> -n 'name' --type 'device_type'")
+    parser.add_argument('--name', '-n', help="Specify device name when adding to the monitoring list.", required=False)
+    parser.add_argument('--type', help="Specify device type when adding to the monitoring list.", required=False)
+    
     parser.add_argument('--remove', '-D', help="Remove device from the monitoring list by IP address.")
     parser.add_argument('--drop', '-ML', action='store_true', help="Remove all devices from the monitoring list.")
     parser.add_argument('--ML', '-l', action='store_true', help="List all devices in the monitoring list.")
@@ -177,6 +181,7 @@ def main():
     parser.add_argument('--alert', help="Send email alerts for detected threats to the specified email.")
     parser.add_argument('--dg', action='store_true', help="Detect dangerous threats like malware or critical threats and send email alert.")
     parser.add_argument('--save', help="Save the list of monitored devices to a specified location or default directory.")
+
     parser.add_argument('--version', action='store_true', help="Display the tool version.")
     parser.add_argument('--autocheck', help="Enable auto-checking for threats and send alerts periodically to the specified email.")
     parser.add_argument('--report', '-F', nargs=2, metavar=('title', 'content'), help="Send feedback or error report to the developer.")
