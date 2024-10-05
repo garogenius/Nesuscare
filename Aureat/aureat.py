@@ -9,17 +9,20 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import subprocess
 import time
+import sys
+import nmap
 
 # Configuration
 config = configparser.ConfigParser()
-config.read(os.path.expanduser('~/.config.ini'))  # Config file in home directory
+config.read(os.path.expanduser('config.ini'))  # Config file in home directory
 
 THREAT_FEEDS = {
     "CVE": "https://cve.circl.lu/api/last",
-    "Abuse": "https://feodotracker.abuse.ch/downloads/ipblocklist.csv"
+    "Abuse": "https://feodotracker.abuse.ch/downloads/ipblocklist.csv",
+    "Malware": "https://malwaredatabase.com/api/latest"  # Hypothetical API
 }
 
-VERSION = "Aureat Tool v2.2"
+VERSION = "Aureat Tool v2.4"
 MONITORED_DEVICES = []
 WORKING_DIR = os.getcwd()  # Get the current working directory
 REPORTS_PATH = os.path.join(WORKING_DIR, "aureat_reports")
@@ -35,7 +38,6 @@ def display_header():
     subprocess.run(["figlet", "            Aureat"])
     print("|   Automated Threat Intelligence Aggregator Tool          |")
     print("|                Created by Garogenius                     |")
-    print("|                                                          |")
     print("|__________________________________________________________|")
 
 def load_devices():
@@ -58,9 +60,12 @@ def save_devices():
     print(f"Monitored devices saved to {DEVICES_FILE}.")
 
 def add_device(ip_address, name, device_type):
+    """Add device and check for vulnerabilities."""
     load_devices()  # Always load the latest devices before adding
     MONITORED_DEVICES.append({"ip": ip_address, "name": name, "type": device_type})
     print(f"Device {ip_address} ({name}, {device_type}) added to monitoring list.")
+    # Perform an advanced vulnerability scan
+    scan_device_for_vulns(ip_address, device_type)
     save_devices()
 
 def remove_device(ip_address):
@@ -93,46 +98,49 @@ def list_monitored_devices():
         print("No devices in the monitoring list.")
 
 def send_email_alert(subject, body, receiver_email):
+    """Send email alert to the configured receiver."""
     try:
         if 'Email' not in config:
             print("Error: 'Email' section is missing in config.ini.")
             return
 
-        senderEmail = config['Email'].get('SenderEmail')
+        sender_email = config['Email'].get('SenderEmail')
         password = config['Email'].get('Password')
 
-        if not senderEmail or not password:
+        if not sender_email or not password:
             print("Error: Missing SenderEmail or Password in config.ini.")
             return
 
         msg = MIMEMultipart()
-        msg['From'] = senderEmail
+        msg['From'] = sender_email
         msg['To'] = receiver_email
         msg['Subject'] = subject
         msg.attach(MIMEText(body, 'plain'))
 
         with smtplib.SMTP('smtp.gmail.com', 587) as server:
             server.starttls()
-            server.login(senderEmail, password)
+            server.login(sender_email, password)
             server.send_message(msg)
         print(f"Email alert sent to {receiver_email}.")
-    
-    except KeyError as e:
-        print(f"KeyError: Missing email configuration for {e}")
-    except smtplib.SMTPException as e:
-        print(f"SMTP Error: {e}")
+        
+    except smtplib.SMTPAuthenticationError:
+        print("Error: Authentication failed. Check your credentials or enable App Passwords.")
     except Exception as e:
         print(f"Unexpected error: {e}")
 
 def fetch_threat_data():
+    """Fetch threat data from various threat feeds."""
     threat_data = []
     for feed_name, feed_url in THREAT_FEEDS.items():
         try:
             response = requests.get(feed_url)
-            response.raise_for_status()  # Raise an error for bad responses
             if feed_name == "Abuse":
                 data = response.text.splitlines()
-                threat_data.extend([{"ip": line.split(',')[0], "description": line} for line in data])  # Adjust structure as needed
+                for line in data:
+                    try:
+                        threat_data.append({"ip": line.split(',')[0], "description": line})
+                    except IndexError:
+                        continue  # Skip malformed lines
             else:
                 data = response.json()
                 threat_data.extend(data)
@@ -140,6 +148,26 @@ def fetch_threat_data():
         except requests.RequestException as e:
             print(f"Error fetching data from {feed_name}: {e}")
     return threat_data
+
+def scan_device_for_vulns(ip_address, device_type):
+    """Perform an advanced scan to detect vulnerabilities on the device."""
+    print(f"Starting vulnerability scan for {ip_address} ({device_type})...")
+
+    nm = nmap.PortScanner()
+    nm.scan(ip_address, arguments='-sV --script vuln')
+
+    for host in nm.all_hosts():
+        print(f"Scan results for {host}:")
+        for proto in nm[host].all_protocols():
+            for port in nm[host][proto]:
+                state = nm[host][proto][port]['state']
+                service = nm[host][proto][port]['name']
+                print(f"Port {port}: {service} is {state}")
+                
+                # Log detected vulnerabilities (if any)
+                if 'script' in nm[host][proto][port]:
+                    for script in nm[host][proto][port]['script']:
+                        print(f"Vulnerability: {script} -> {nm[host][proto][port]['script'][script]}")
 
 def correlate_threats(threat_data):
     correlated_threats = []
@@ -153,11 +181,7 @@ def correlate_threats(threat_data):
     return correlated_threats
 
 def generate_report(correlated_threats, title="Threat Report"):
-    if not correlated_threats:
-        print("No correlated threats to report.")
-        return
-
-    report_content = "\n".join([f"Device: {t['device']}, Threat: {t['threat'].get('description', 'No description available')}" for t in correlated_threats])
+    report_content = "\n".join([f"Device: {t['device']}, Threat: {t['threat']['description']}" for t in correlated_threats])
     report_file = os.path.join(REPORTS_PATH, f"{title.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
     with open(report_file, "w") as f:
         f.write(report_content)
@@ -191,7 +215,7 @@ def auto_checker(interval=3600, receiver_email=""):
 # Command-line Interface
 def main():
     parser = argparse.ArgumentParser(description="Aureat - Automated Threat Intelligence Aggregator by Garogenius")
-    parser.add_argument('--add', '-d', help="Add device to the monitoring list. Example: aureat --add <IP> -n 'name' --type 'device_type'")
+    parser.add_argument('--add', '-d', help="Add device to the monitoring list. Example: aureat --add -d <IP> -n 'name' --type 'device_type'")
     parser.add_argument('--name', '-n', help="Specify device name when adding to the monitoring list.")
     parser.add_argument('--type', help="Specify device type when adding to the monitoring list.")
     parser.add_argument('--remove', '-D', help="Remove device from the monitoring list by IP address.")
@@ -200,15 +224,17 @@ def main():
     parser.add_argument('--fetch', action='store_true', help="Fetch latest threat data from feeds.")
     parser.add_argument('--correlate', action='store_true', help="Correlate fetched threats with monitored devices.")
     parser.add_argument('--report-title', help="Generate a report of correlated threats.")
-    parser.add_argument('--dg', action='store_true', help="Detect dangerous threats and send alert.")
-    parser.add_argument('--feedback', '-F', help="Send feedback to the developer with title and content.")
-    parser.add_argument('--receiver-email', help="Email address to receive alerts.")
-    parser.add_argument('--version', action='version', version=VERSION, help="Show the version of Aureat.")
-    parser.add_argument('--auto-check', action='store_true', help="Run the auto-checker for threats at regular intervals.")
+    parser.add_argument('--alert', help="Send email alerts for detected threats to the specified email.")
+    parser.add_argument('--dg', action='store_true', help="Detect dangerous threats like malware or critical threats and send email alert.")
+    parser.add_argument('--save', help="Specify location to save the report.")
+    parser.add_argument('--feedback', '-F', nargs=2, help="Send feedback to the developer with title and content.")
+    parser.add_argument('--version', action='version', version=VERSION)
+    parser.add_argument('--auto', action='store_true', help="Start the auto checker for new threats.")
 
     args = parser.parse_args()
 
     display_header()
+    load_devices()
 
     if args.add and args.name and args.type:
         add_device(args.add, args.name, args.type)
@@ -223,24 +249,26 @@ def main():
     elif args.correlate:
         threat_data = fetch_threat_data()
         correlated_threats = correlate_threats(threat_data)
-        if args.report_title:
-            generate_report(correlated_threats, args.report_title)
-        else:
-            print("Correlated threats fetched but no report title provided.")
+        print(correlated_threats)
+    elif args.report_title:
+        threat_data = fetch_threat_data()
+        correlated_threats = correlate_threats(threat_data)
+        generate_report(correlated_threats, args.report_title)
+    elif args.alert:
+        send_email_alert("Threat Alert", "New threats detected.", args.alert)
     elif args.dg:
         threat_data = fetch_threat_data()
         dangerous_threats = detect_dangerous_threats(threat_data)
         if dangerous_threats:
-            report_file = generate_report(dangerous_threats, title="Dangerous Threats Report")
-            if args.receiver_email:
-                send_email_alert("Dangerous Threats Detected", f"Dangerous threats report: {report_file}", args.receiver_email)
+            generate_report(dangerous_threats, "Dangerous Threat Report")
+            send_email_alert("Dangerous Threat Detected", "Check the dangerous threat report.", args.alert)
     elif args.feedback:
-        feedback_title, feedback_content = args.feedback.split(",", 1)
-        send_feedback(feedback_title.strip(), feedback_content.strip())
-    elif args.auto_check:
-        auto_checker(receiver_email=args.receiver_email)
+        send_feedback(args.feedback[0], args.feedback[1])
+    elif args.auto:
+        receiver_email = config['Email'].get('ReceiverEmail') if 'Email' in config and 'ReceiverEmail' in config['Email'] else ""
+        auto_checker(receiver_email=receiver_email)
     else:
-        parser.print_help()
+        print("No valid command provided. Use --help for more information.")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
