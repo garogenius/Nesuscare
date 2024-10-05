@@ -2,4 +2,7 @@ requests          # For making HTTP requests to APIs
 pyfiglet          # For generating stylish text output (figlet)
 schedule          # For scheduling tasks (e.g., auto-checks)
 python-dotenv     
-pandas            
+pandas
+socket
+python-nmap==0.6.0
+
