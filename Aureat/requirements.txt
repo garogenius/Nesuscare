@@ -4,5 +4,6 @@ schedule          # For scheduling tasks (e.g., auto-checks)
 python-dotenv     
 pandas
 socket
+scapy
 python-nmap==0.6.0
 

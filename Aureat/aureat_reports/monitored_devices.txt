@@ -1,6 +1,1 @@
-Rauter - 192.0.1.1 - Office Rauter
-Rauter2 - 192.0.1.1 - Office Rauter2
-Rauter2 - 192.0.1.1 - Office Rauter2
 Office PC - 192.168.1.10 - Workstation
-Office PC - 192.168.1.10 - Workstation
-Router1 - 192.168.1.10 - Internal
