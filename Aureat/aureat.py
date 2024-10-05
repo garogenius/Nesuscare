@@ -40,6 +40,16 @@ def display_header():
     print("|                                                               |")
     print("_________________________________________________________________")
 
+# Load devices from the monitored_devices.txt file
+def load_devices(save_path=None):
+    save_path = save_path or DEFAULT_SAVE_PATH
+    full_path = os.path.join(save_path, "monitored_devices.txt")
+    if os.path.exists(full_path):
+        with open(full_path, "r") as f:
+            for line in f:
+                name, ip, device_type = line.strip().split(" - ")
+                MONITORED_DEVICES.append({"name": name, "ip": ip, "type": device_type})
+
 def add_device(ip_address, name, device_type):
     MONITORED_DEVICES.append({"ip": ip_address, "name": name, "type": device_type})
     print(f"Device {ip_address} ({name}, {device_type}) added to monitoring list.")
@@ -66,6 +76,8 @@ def save_devices(save_path=None):
     print(f"Monitored devices saved to {full_path}.")
 
 def list_monitored_devices():
+    MONITORED_DEVICES.clear()  # Clear the list to reload fresh data from file
+    load_devices()  # Load devices from the file
     if MONITORED_DEVICES:
         print("Devices in monitoring list:")
         for device in MONITORED_DEVICES:
