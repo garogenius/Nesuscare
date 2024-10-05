@@ -33,7 +33,7 @@ if not os.path.exists(REPORTS_PATH):
 def display_header():
     print("___________________________________________________________")
     print("|                                                          |")
-    subprocess.run(["figlet", "   L         Aureat"])
+    subprocess.run(["figlet", "            Aureat"])
     print("|   Automated Threat Intelligence Aggregator Tool          |")
     print("|                Created by Garogenius                     |")
     print("|                                                          |")
