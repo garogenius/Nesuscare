@@ -234,8 +234,11 @@ def main():
             send_email_alert("Threat Alert", "Check attached threats", args.alert)
     elif args.autocheck:
         auto_checker(receiver_email=args.autocheck)
-    elif args.report and args.F:
-        send_feedback(args.F[0], args.F[1])
+    elif args.report:
+        send_feedback(args.report[0], args.report[1])
+        print(args)
+
+
 
 if __name__ == "__main__":
     display_header()
