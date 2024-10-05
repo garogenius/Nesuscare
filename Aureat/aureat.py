@@ -205,7 +205,7 @@ def main():
     parser.add_argument('--save', help="Save the list of monitored devices to a specified location or default directory.")
     parser.add_argument('--version', action='store_true', help="Display the tool version.")
     parser.add_argument('--autocheck', help="Enable auto-checking for threats and send alerts periodically to the specified email.")
-    parser.add_argument('--report', '-F', nargs=2, metavar=('title', 'content'), help="Send feedback or error report to the developer.")
+    parser.add_argument('--report', '-F', nargs='+', metavar='feedback', help="Send feedback or error report to the developer.")
 
     args = parser.parse_args()
 
@@ -234,9 +234,12 @@ def main():
             send_email_alert("Threat Alert", "Check attached threats", args.alert)
     elif args.autocheck:
         auto_checker(receiver_email=args.autocheck)
-    elif args.report:
-        send_feedback(args.report[0], args.report[1])
-        print(args)
+    if args.report:
+        title = args.report[0]  # First argument is the title
+    content = ' '.join(args.report[1:])  # Join the rest as content
+    send_feedback(title, content)
+
+    print(args)
 
 
 
