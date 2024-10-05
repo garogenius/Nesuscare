@@ -13,7 +13,7 @@ import sys
 
 # Configuration
 config = configparser.ConfigParser()
-config.read(os.path.expanduser('~/.aureat_config.ini'))  # Config file in home directory
+config.read(os.path.expanduser('config.ini'))  # Config file in home directory
 
 THREAT_FEEDS = {
     "CVE": "https://cve.circl.lu/api/last",
@@ -67,9 +67,17 @@ def add_device(ip_address, name, device_type):
 def remove_device(ip_address):
     load_devices()  # Load the latest devices before removing
     global MONITORED_DEVICES
-    MONITORED_DEVICES = [d for d in MONITORED_DEVICES if d['ip'] != ip_address]
-    print(f"Device {ip_address} removed from monitoring list.")
-    save_devices()
+    # Fix: Only remove the device that matches the given IP address
+    device_found = False
+    for device in MONITORED_DEVICES:
+        if device['ip'] == ip_address:
+            MONITORED_DEVICES.remove(device)
+            device_found = True
+            print(f"Device {ip_address} removed from monitoring list.")
+            save_devices()
+            break
+    if not device_found:
+        print(f"Device with IP {ip_address} not found.")
 
 def drop_all_devices():
     global MONITORED_DEVICES
@@ -87,23 +95,31 @@ def list_monitored_devices():
         print("No devices in the monitoring list.")
 
 def send_email_alert(subject, body, receiver_email):
-    sender_email = config['Email']['SenderEmail']
-    password = config['Email']['Password']
-
-    msg = MIMEMultipart()
-    msg['From'] = sender_email
-    msg['To'] = receiver_email
-    msg['Subject'] = subject
-    msg.attach(MIMEText(body, 'plain'))
-
     try:
-        with smtplib.SMTP('smtp.gmail.com', 587) as server:
-            server.starttls()
-            server.login(sender_email, password)
-            server.send_message(msg)
-        print(f"Email alert sent to {receiver_email}.")
-    except Exception as e:
-        print(f"Error sending email: {e}")
+        # Fix: Check if the config contains the necessary email settings
+        if 'Email' not in config or 'SenderEmail' not in config['Email'] or 'Password' not in config['Email']:
+            print("Email configuration missing in config.ini.")
+            return
+
+        sender_email = config['Email']['SenderEmail']
+        password = config['Email']['Password']
+
+        msg = MIMEMultipart()
+        msg['From'] = sender_email
+        msg['To'] = receiver_email
+        msg['Subject'] = subject
+        msg.attach(MIMEText(body, 'plain'))
+
+        try:
+            with smtplib.SMTP('smtp.gmail.com', 587) as server:
+                server.starttls()
+                server.login(sender_email, password)
+                server.send_message(msg)
+            print(f"Email alert sent to {receiver_email}.")
+        except Exception as e:
+            print(f"Error sending email: {e}")
+    except KeyError as e:
+        print(f"Missing email configuration: {e}")
 
 def fetch_threat_data():
     threat_data = []
@@ -140,7 +156,9 @@ def generate_report(correlated_threats, title="Threat Report"):
     return report_file
 
 def detect_dangerous_threats(threat_data):
-    dangerous_threats = [threat for threat in threat_data if "critical" in threat.get('severity', '').lower() or "malware" in threat.get('description', '').lower()]
+    # Fix: Make sure threat_data contains dictionaries, not strings
+    dangerous_threats = [threat for threat in threat_data if isinstance(threat, dict) and (
+        "critical" in threat.get('severity', '').lower() or "malware" in threat.get('description', '').lower())]
     return dangerous_threats
 
 def send_feedback(title, content):
