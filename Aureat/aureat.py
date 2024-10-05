@@ -13,7 +13,7 @@ import sys
 
 # Configuration
 config = configparser.ConfigParser()
-config.read(os.path.expanduser('config.ini'))  # Config file in home directory
+config.read(os.path.expanduser('~/.config.ini'))  # Config file in home directory
 
 THREAT_FEEDS = {
     "CVE": "https://cve.circl.lu/api/last",
