@@ -157,7 +157,11 @@ def correlate_threats(threat_data):
     return correlated_threats
 
 def generate_report(correlated_threats, title="Threat Report"):
-    report_content = "\n".join([f"Device: {t['device']}, Threat: {t['threat']['description']}" for t in correlated_threats])
+    if not correlated_threats:
+        print("No correlated threats to report.")
+        return
+
+    report_content = "\n".join([f"Device: {t['device']}, Threat: {t['threat'].get('description', 'No description available')}" for t in correlated_threats])
     report_file = os.path.join(REPORTS_PATH, f"{title.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
     with open(report_file, "w") as f:
         f.write(report_content)
@@ -201,57 +205,45 @@ def main():
     parser.add_argument('--fetch', action='store_true', help="Fetch latest threat data from feeds.")
     parser.add_argument('--correlate', action='store_true', help="Correlate fetched threats with monitored devices.")
     parser.add_argument('--report-title', help="Generate a report of correlated threats.")
-    parser.add_argument('--alert', help="Send email alerts for detected threats to the specified email.")
-    parser.add_argument('--dg', action='store_true', help="Detect dangerous threats like malware or critical threats and send email alert.")
-    parser.add_argument('--save', help="Save the list of monitored devices to a specified location or default directory.")
-    parser.add_argument('--version', action='store_true', help="Display the tool version.")
-    parser.add_argument('--autocheck', help="Enable auto-checking for threats and send alerts periodically to the specified email.")
-    parser.add_argument('--report', '-F', nargs='+', metavar='feedback', help="Send feedback or error report to the developer.")
-
+    parser.add_argument('--dg', action='store_true', help="Detect dangerous threats and send alert.")
+    parser.add_argument('--feedback', '-F', help="Send feedback to the developer with title and content.")
+    parser.add_argument('--receiver', help="Email to receive alert notifications.")
+    parser.add_argument('--version', action='version', version=VERSION, help="Show version information.")
+    parser.add_argument('--auto-check', action='store_true', help="Run auto-check for new threats.")
     args = parser.parse_args()
 
-    if args.version:
-        print(VERSION)
-    elif args.add and args.name and args.type:
+    display_header()
+
+    if args.add and args.name and args.type:
         add_device(args.add, args.name, args.type)
-        print(f"Device {args.name} with IP {args.add} and type {args.type} has been added successfully.")
     elif args.remove:
         remove_device(args.remove)
-        print(f"Device with IP {args.remove} has been removed from monitoring list.")
     elif args.drop:
         drop_all_devices()
-        print("All devices have been removed from the monitoring list.")
     elif args.ML:
         list_monitored_devices()
     elif args.fetch:
         threat_data = fetch_threat_data()
-        if args.correlate:
-            correlated_threats = correlate_threats(threat_data)
-            if args.report_title:
-                report_file = generate_report(correlated_threats, args.report_title)
-                print(f"Report generated with title '{args.report_title}'.")
-        if args.dg:
-            dangerous_threats = detect_dangerous_threats(threat_data)
-            if dangerous_threats:
-                report_file = generate_report(dangerous_threats, "Dangerous Threats Report")
-                send_email_alert("Dangerous Threats Detected", f"Critical or malware threats have been detected. Report: {report_file}", args.alert)
-                print(f"Alert: Dangerous threats detected! An email has been sent to {args.alert}.")
-        if args.alert:
-            send_email_alert("Threat Alert", "Check attached threats", args.alert)
-            print(f"Alert: An email has been sent to {args.alert}.")
-    elif args.autocheck:
-        auto_checker(receiver_email=args.autocheck)
-        print(f"Auto-checking for threats has been enabled. You will receive notifications at {args.autocheck}.")
-    
-    if args.report:
-        title = args.report[0]  # First argument is the title
-        content = ' '.join(args.report[1:])  # Join the rest as content
+    elif args.correlate:
+        threat_data = fetch_threat_data()
+        correlated_threats = correlate_threats(threat_data)
+        if correlated_threats:
+            report_file = generate_report(correlated_threats, args.report_title)
+            send_email_alert("Threat Report", f"Report generated: {report_file}", args.receiver)
+    elif args.dg:
+        threat_data = fetch_threat_data()
+        dangerous_threats = detect_dangerous_threats(threat_data)
+        if dangerous_threats:
+            send_email_alert("Dangerous Threats Detected", f"Found dangerous threats: {dangerous_threats}", args.receiver)
+    elif args.feedback:
+        title, content = args.feedback.split(', ', 1)
         send_feedback(title, content)
-        print(f"Feedback submitted with title '{title}'.")
+    elif args.auto_check:
+        receiver_email = args.receiver if args.receiver else config['Email'].get('ReceiverEmail', '')
+        auto_checker(receiver_email=receiver_email)
+    else:
+        parser.print_help()
 
-    print(args)
-
-if __name__ == "__main__":
-    display_header()
+if __name__ == '__main__':
+    load_devices()
     main()
-
