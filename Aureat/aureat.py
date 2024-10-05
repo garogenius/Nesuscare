@@ -96,13 +96,18 @@ def list_monitored_devices():
 
 def send_email_alert(subject, body, receiver_email):
     try:
-        # Check if the 'Email' section and its keys exist in the config
-        if not all(key in config['Email'] for key in ['SenderEmail', 'Password']):
-            print("Email configuration missing or incomplete in config.ini.")
+        # Ensure the 'Email' section is present
+        if 'Email' not in config:
+            print("Error: 'Email' section is missing in config.ini.")
             return
 
-        senderEmail = config['Email']['SenderEmail']
-        password = config['Email']['Password']
+        senderEmail = config['Email'].get('SenderEmail')
+        password = config['Email'].get('Password')
+
+        # Ensure both email and password are provided
+        if not senderEmail or not password:
+            print("Error: Missing SenderEmail or Password in config.ini.")
+            return
 
         msg = MIMEMultipart()
         msg['From'] = senderEmail
@@ -110,22 +115,19 @@ def send_email_alert(subject, body, receiver_email):
         msg['Subject'] = subject
         msg.attach(MIMEText(body, 'plain'))
 
-        # Attempt to send the email
         try:
             with smtplib.SMTP('smtp.gmail.com', 587) as server:
                 server.starttls()
                 server.login(senderEmail, password)
                 server.send_message(msg)
             print(f"Email alert sent to {receiver_email}.")
-        except smtplib.SMTPException as smtp_err:
-            print(f"SMTP error occurred: {smtp_err}")
         except Exception as e:
-            print(f"General error when sending email: {e}")
+            print(f"Error sending email: {e}")
     
-    except KeyError as config_err:
-        print(f"Configuration error: Missing key {config_err}")
+    except KeyError as e:
+        print(f"KeyError: Missing email configuration for {e}")
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+        print(f"Unexpected error: {e}")
 
 def fetch_threat_data():
     threat_data = []
