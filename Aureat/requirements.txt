@@ -1,9 +1,13 @@
-requests          # For making HTTP requests to APIs
-pyfiglet          # For generating stylish text output (figlet)
-schedule          # For scheduling tasks (e.g., auto-checks)
-python-dotenv     
-pandas
-socket
+requests
+smtplib3
+netifaces
 scapy
-python-nmap==0.6.0
-
+argparse
+rich
+webbrowser
+tqdm
+colorama
+nmap
+# geoip2 (commented because the import is commented in your script)
+# Consider uncommenting this if you intend to use geoip2 functionality:
+# geoip2
